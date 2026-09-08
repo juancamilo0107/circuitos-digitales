@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entrenador K-Map Total Avanzado</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0f172a; color: #f8fafc;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            min-height: 100vh; margin: 0; padding: 20px;
+        }
+        .card {
+            background-color: #1e293b; padding: 25px; border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.4); max-width: 900px; width: 100%; text-align: center;
+        }
+        h1 { font-size: 1.4rem; margin-bottom: 5px; color: #38bdf8; }
+        p { color: #94a3b8; font-size: 0.9rem; margin-bottom: 15px; }
+
+        .controls { display: flex; gap: 10px; justify-content: center; align-items: center; margin-bottom: 15px; flex-wrap: wrap; }
+        select, button {
+            background-color: #0284c7; color: white; border: none; padding: 10px 18px;
+            border-radius: 6px; cursor: pointer; font-size: 0.95rem; font-weight: bold; outline: none;
+        }
+        select { background-color: #334155; border: 1px solid #475569; }
+        button:hover { background-color: #0369a1; }
+        .btn-green { background-color: #10b981; }
+        .btn-green:hover { background-color: #059669; }
+
+        .info-box {
+            margin: 10px auto 15px auto; max-width: 700px; font-size: 0.9rem;
+            color: #cbd5e1; background-color: rgba(56, 189, 248, 0.08);
+            border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; padding: 10px 14px;
+            min-height: 0; line-height: 1.5;
+        }
+        .info-box:empty { display: none; }
+
+        .color-palette {
+            display: flex; justify-content: center; flex-wrap: wrap; gap: 10px;
+            margin: 15px auto; max-width: 380px;
+        }
+        .color-btn {
+            width: 32px; height: 32px; border-radius: 50%; border: 2px solid transparent;
+            cursor: pointer; transition: transform 0.1s;
+        }
+        .color-btn.active { border-color: #ffffff; transform: scale(1.15); }
+
+        .maps-container {
+            display: flex; flex-wrap: wrap; justify-content: center; gap: 40px; margin: 20px 0;
+        }
+
+        .kmap-wrapper { position: relative; display: inline-block; padding: 15px; }
+        .grid-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 25px; color: #f8fafc; }
+
+        .kmap-grid {
+            display: grid; grid-template-columns: repeat(4, 55px); grid-template-rows: repeat(4, 55px);
+            gap: 3px; background: #475569; border: 3px solid #94a3b8; border-radius: 4px; position: relative;
+        }
+
+        .cell {
+            background-color: #0f172a; display: flex; align-items: center; justify-content: center;
+            font-size: 1.3rem; font-weight: bold; cursor: pointer; user-select: none;
+            position: relative; z-index: 2; transition: background-color 0.1s;
+        }
+        .cell:hover { background-color: #1e293b; }
+        
+        .kmap-grid::before {
+            content: ''; position: absolute; top: 0; bottom: 0; left: 50%; width: 3px;
+            background-color: #f8fafc; transform: translateX(-50%); pointer-events: none; z-index: 3;
+        }
+        .kmap-grid::after {
+            content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 3px;
+            background-color: #f8fafc; transform: translateY(-50%); pointer-events: none; z-index: 3;
+        }
+
+        .axis-label { position: absolute; font-size: 1.1rem; font-weight: bold; color: #38bdf8; }
+        .label-a { top: 22px; right: 75px; }
+        .label-b { bottom: -5px; left: 130px; }
+        .label-c { left: -10px; bottom: 75px; }
+        .label-d { right: -12px; top: 125px; }
+
+        .loop-marker {
+            position: absolute; top: 3px; bottom: 3px; left: 3px; right: 3px;
+            border-radius: 6px; pointer-events: none; z-index: 1;
+        }
+
+        input[type="text"] {
+            width: 85%; padding: 12px; border-radius: 6px; border: 1px solid #475569;
+            background-color: #0f172a; color: white; font-size: 1.1rem; margin-top: 10px; text-align: center;
+        }
+
+        .feedback-box {
+            margin-top: 15px; padding: 15px; border-radius: 6px; font-size: 0.95rem;
+            display: none; text-align: left; line-height: 1.5;
+        }
+        .success-bg { background-color: rgba(34, 197, 94, 0.15); border: 1px solid #22c55e; color: #f8fafc; }
+        .error-bg { background-color: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; color: #f8fafc; }
+        .warning-bg { background-color: rgba(234, 179, 8, 0.15); border: 1px solid #eab308; color: #f8fafc; }
+        .hl-green { color: #4ade80; font-weight: bold; }
+        .hl-red { color: #f87171; font-weight: bold; }
+        .hl-yellow { color: #fde047; font-weight: bold; }
+        .hl-purple { color: #c084fc; font-weight: bold; }
+
+        .hidden { display: none !important; }
+
+        .radio-group {
+            display: flex; justify-content: center; gap: 18px; margin-top: 10px;
+            background-color: #0f172a; padding: 12px; border-radius: 8px; border: 1px solid #334155;
+            flex-wrap: wrap;
+        }
+        .radio-group label {
+            cursor: pointer; display: flex; align-items: center; gap: 6px;
+            font-size: 0.95rem; color: #94a3b8; transition: color 0.2s;
+        }
+        .radio-group label:hover { color: #f8fafc; }
+        .radio-group input[type="radio"] { accent-color: #38bdf8; transform: scale(1.2); }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h1>Entrenador K-Map Total Avanzado</h1>
+    <p>Nuevas herramientas: Edici&oacute;n de 0s y 1s, variables no especificadas (X), variables ingresadas (MEV) y resolución de Hazards.</p>
+
+    <div class="controls">
+        <select id="modeSelect" onchange="changeMode()">
+            <optgroup label="Entrenamiento Estándar">
+                <option value="simplify">1. Simplificaci&oacute;n Normal (Agrupar 1s)</option>
+                <option value="simplify_dc">2. Simplificaci&oacute;n con No Importa (X)</option>
+                <option value="maxterms">3. M&aacute;xit&eacute;rminos (Agrupar 0s)</option>
+                <option value="minterms">4. Minit&eacute;rminos (Completar mapa)</option>
+                <option value="hazards">5. Detecci&oacute;n de Hazards (Entrenamiento)</option>
+            </optgroup>
+            <optgroup label="Creador / Solucionador Automático">
+                <option value="solver">6. Creador B&aacute;sico (Solo 1s y 0s)</option>
+                <option value="solver_dc">7. Creador con No Importa (Añadir X)</option>
+                <option value="solver_mev">8. Creador Avanzado MEV (Añadir F, G)</option>
+            </optgroup>
+        </select>
+        <select id="varSelect" onchange="newMap()">
+            <option value="4">4 Variables (A,B,C,D)</option>
+            <option value="5">5 Variables (A,B,C,D,E)</option>
+        </select>
+        <button onclick="newMap()">Limpiar / Nuevo Mapa</button>
+    </div>
+
+    <div class="info-box" id="infoBox"></div>
+
+    <div class="color-palette" id="palette">
+        <div class="color-btn active" style="background-color: rgba(239, 68, 68, 0.7);" data-color="rgba(239, 68, 68, 0.3)" data-border="rgb(239, 68, 68)"></div>
+        <div class="color-btn" style="background-color: rgba(59, 130, 246, 0.7);" data-color="rgba(59, 130, 246, 0.3)" data-border="rgb(59, 130, 246)"></div>
+        <div class="color-btn" style="background-color: rgba(34, 197, 94, 0.7);" data-color="rgba(34, 197, 94, 0.3)" data-border="rgb(34, 197, 94)"></div>
+        <div class="color-btn" style="background-color: rgba(234, 179, 8, 0.7);" data-color="rgba(234, 179, 8, 0.3)" data-border="rgb(234, 179, 8)"></div>
+        <div class="color-btn" style="background-color: rgba(168, 85, 247, 0.7);" data-color="rgba(168, 85, 247, 0.3)" data-border="rgb(168, 85, 247)"></div>
+        <div class="color-btn" style="background-color: rgba(249, 115, 22, 0.7);" data-color="rgba(249, 115, 22, 0.3)" data-border="rgb(249, 115, 22)"></div>
+        <div class="color-btn" style="background-color: rgba(6, 182, 212, 0.7);" data-color="rgba(6, 182, 212, 0.3)" data-border="rgb(6, 182, 212)"></div>
+        <div class="color-btn" style="background-color: rgba(236, 72, 153, 0.7);" data-color="rgba(236, 72, 153, 0.3)" data-border="rgb(236, 72, 153)"></div>
+    </div>
+
+    <div class="maps-container" id="mapsContainer"></div>
+
+    <div id="expressionSection">
+        <input type="text" id="userAnswer" placeholder="Introduce tu expresi&oacute;n (Ej: A'B + C'DE)">
+        <button id="verifyBtn" style="margin-top: 15px; width: 90%;" onclick="verifySolution()">Verificar Trazos y Expresi&oacute;n</button>
+    </div>
+
+    <div id="mintermSection" class="hidden">
+        <button style="margin-top: 15px; width: 90%;" onclick="verifyMinterms()">Verificar Minit&eacute;rminos</button>
+    </div>
+
+    <div id="solverSection" class="hidden">
+        <div class="radio-group" style="width: 90%; margin: 10px auto;">
+            <label><input type="radio" name="solveType" value="SOP" checked> SOP (M&iacute;nima)</label>
+            <label><input type="radio" name="solveType" value="HAZARDS"> SOP (Libre Hazards)</label>
+            <label><input type="radio" name="solveType" value="POS"> POS (M&iacute;nima)</label>
+            <label><input type="radio" name="solveType" value="POS_HAZARDS"> POS (Libre Hazards)</label>
+        </div>
+        <button class="btn-green" style="margin-top: 10px; width: 90%;" onclick="solveMap()">Resolver Mapa Autom&aacute;ticamente</button>
+    </div>
+
+    <div id="feedback" class="feedback-box"></div>
+</div>
+
+<script>
+    let currentBg = "rgba(239, 68, 68, 0.3)";
+    let currentBorder = "rgb(239, 68, 68)";
+    let cellLoops = {};
+    let matrix = [];
+    let guessMatrix = [];
+    let numVars = 4;
+    let numGrids = 1;
+    let mode = 'simplify';
+
+    document.querySelectorAll('.color-btn').forEach(btn => {
+        btn.onclick = (e) => {
+            document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            currentBg = e.target.dataset.color;
+            currentBorder = e.target.dataset.border;
+        };
+    });
+
+    function changeMode() { mode = document.getElementById('modeSelect').value; newMap(); }
+
+    function newMap() {
+        document.getElementById('userAnswer').value = '';
+        document.getElementById('feedback').style.display = 'none';
+        cellLoops = {};
+        numVars = parseInt(document.getElementById('varSelect').value);
+        numGrids = numVars === 5 ? 2 : 1;
+
+        matrix = Array(numGrids).fill(0).map(() => Array(4).fill(0).map(() => Array(4).fill(0)));
+        for (let e = 0; e < numGrids; e++) {
+            for (let r = 0; r < 4; r++) {
+                for (let c = 0; c < 4; c++) {
+                    if (mode.startsWith('solver')) {
+                        matrix[e][r][c] = 0; 
+                    } else if (mode === 'simplify_dc') {
+                        let rnd = Math.random();
+                        matrix[e][r][c] = rnd > 0.75 ? 'X' : (rnd > 0.35 ? 1 : 0);
+                    } else {
+                        matrix[e][r][c] = Math.random() > 0.55 ? 1 : 0;
+                    }
+                }
+            }
+        }
+        guessMatrix = Array(numGrids).fill(0).map(() => Array(4).fill(0).map(() => Array(4).fill(0)));
+
+        updateModeUI();
+        renderGrids();
+    }
+
+    function updateModeUI() {
+        const palette = document.getElementById('palette');
+        const exprSection = document.getElementById('expressionSection');
+        const mintermSection = document.getElementById('mintermSection');
+        const solverSection = document.getElementById('solverSection');
+        const infoBox = document.getElementById('infoBox');
+        const inputField = document.getElementById('userAnswer');
+        const verifyBtn = document.getElementById('verifyBtn');
+
+        palette.classList.add('hidden'); exprSection.classList.add('hidden'); 
+        solverSection.classList.add('hidden'); mintermSection.classList.add('hidden');
+
+        if (mode === 'minterms') {
+            mintermSection.classList.remove('hidden');
+            let list = getMintermList();
+            infoBox.innerHTML = 'Haz click en las celdas para colocar los 1s de:<br><b style="color:#38bdf8;">&Sigma;m(' + list.join(', ') + ')</b>';
+        } else if (mode === 'hazards') {
+            palette.classList.remove('hidden'); exprSection.classList.remove('hidden');
+            inputField.placeholder = "Expresi\u00f3n SOP (Ej: A'B + C'DE)";
+            infoBox.innerHTML = 'Agrupa los 1s <b>y</b> agrega lazos de <b>consenso</b> para eliminar hazards est\u00e1ticos-1.';
+            verifyBtn.innerText = 'Verificar Simplificaci\u00f3n + Hazards';
+        } else if (mode === 'maxterms') {
+            palette.classList.remove('hidden'); exprSection.classList.remove('hidden');
+            inputField.placeholder = "Expresi\u00f3n POS (Ej: (A+B)(C'+D))";
+            infoBox.innerHTML = 'Agrupa los <b>0s</b>. Escribe la expresi\u00f3n como Producto de Sumas (POS).';
+            verifyBtn.innerText = 'Verificar Trazos y Expresi\u00f3n (POS)';
+        } else if (mode.startsWith('solver')) {
+            solverSection.classList.remove('hidden');
+            if(mode === 'solver') infoBox.innerHTML = '<b>Creador:</b> Haz click en las celdas para alternar entre <b>1</b> y <b>0</b>. Luego selecciona un modo de resoluci&oacute;n y presiona Resolver.';
+            if(mode === 'solver_dc') infoBox.innerHTML = '<b>Creador con X:</b> Haz click en las celdas para alternar <b>0 &rarr; 1 &rarr; X</b>. El sistema usar\u00e1 las X para optimizar.';
+            if(mode === 'solver_mev') infoBox.innerHTML = '<b>Creador MEV:</b> Haz click para alternar <b>0 &rarr; 1 &rarr; X &rarr; F &rarr; G</b>. (Las Variables Ingresadas solo aplican al resolver en SOP).';
+        } else {
+            palette.classList.remove('hidden'); exprSection.classList.remove('hidden');
+            inputField.placeholder = "Expresi\u00f3n SOP (Ej: A'B + C'DE)";
+            if(mode === 'simplify_dc') infoBox.innerHTML = 'Agrupa los <b>1s</b>. Puedes encerrar las <b>X</b> (No Importa) solo si te ayuda a hacer rect\u00e1ngulos m\u00e1s grandes.';
+            else infoBox.innerHTML = 'Agrupa los 1s buscando los rect\u00e1ngulos m\u00e1s grandes posibles.';
+            verifyBtn.innerText = 'Verificar Trazos y Expresi\u00f3n (SOP)';
+        }
+    }
+
+    function renderGrids() {
+        const container = document.getElementById('mapsContainer');
+        container.innerHTML = '';
+
+        for (let e = 0; e < numGrids; e++) {
+            let wrapper = document.createElement('div');
+            wrapper.className = 'kmap-wrapper';
+
+            let htmlContent = '';
+            if (numGrids === 2) htmlContent += '<div class="grid-title">E = ' + e + '</div>';
+            htmlContent += '<div class="axis-label label-a">A</div><div class="axis-label label-b">B</div><div class="axis-label label-c">C</div><div class="axis-label label-d">D</div>';
+            wrapper.innerHTML = htmlContent;
+
+            let grid = document.createElement('div');
+            grid.className = 'kmap-grid';
+
+            for (let r = 0; r < 4; r++) {
+                for (let c = 0; c < 4; c++) {
+                    let cellKey = e + '-' + r + '-' + c;
+                    if (!cellLoops[cellKey]) cellLoops[cellKey] = [];
+
+                    let cell = document.createElement('div');
+                    cell.className = 'cell';
+
+                    let val = mode === 'minterms' ? guessMatrix[e][r][c] : matrix[e][r][c];
+                    
+                    if(mode === 'minterms') {
+                        cell.innerText = val === 1 ? '1' : '';
+                        cell.style.color = '#f8fafc';
+                    } else {
+                        cell.innerText = val;
+                        if (val === 0) cell.style.color = '#64748b';
+                        else if (val === 1) cell.style.color = '#f8fafc';
+                        else if (val === 'X') cell.style.color = '#fde047';
+                        else if (val === 'F') cell.style.color = '#c084fc';
+                        else if (val === 'G') cell.style.color = '#f472b6';
+                    }
+
+                    let markerContainer = document.createElement('div');
+                    markerContainer.style.position = 'absolute'; markerContainer.style.inset = '0';
+                    markerContainer.style.pointerEvents = 'none'; markerContainer.style.zIndex = '1';
+
+                    cellLoops[cellKey].forEach((loop, index) => {
+                        let m = document.createElement('div');
+                        m.className = 'loop-marker';
+                        m.style.backgroundColor = loop.bg;
+                        m.style.border = '3px solid ' + loop.border;
+                        if (index > 0) m.style.inset = (3 + (index * 4)) + 'px';
+                        markerContainer.appendChild(m);
+                    });
+
+                    cell.appendChild(markerContainer);
+
+                    cell.onclick = (function(e, r, c, cellKey) {
+                        return function() {
+                            if (mode === 'minterms') {
+                                guessMatrix[e][r][c] = guessMatrix[e][r][c] === 1 ? 0 : 1;
+                                renderGrids();
+                            } else if (mode.startsWith('solver')) {
+                                let val = matrix[e][r][c];
+                                if (mode === 'solver') matrix[e][r][c] = val === 0 ? 1 : 0;
+                                else if (mode === 'solver_dc') {
+                                    let cycle = {0: 1, 1: 'X', 'X': 0};
+                                    matrix[e][r][c] = cycle[val];
+                                } else if (mode === 'solver_mev') {
+                                    let cycle = {0: 1, 1: 'X', 'X': 'F', 'F': 'G', 'G': 0};
+                                    matrix[e][r][c] = cycle[val];
+                                }
+                                cellLoops = {}; document.getElementById('feedback').style.display = 'none';
+                                renderGrids();
+                            } else {
+                                let index = cellLoops[cellKey].findIndex(l => l.border === currentBorder);
+                                if (index > -1) cellLoops[cellKey].splice(index, 1);
+                                else cellLoops[cellKey].push({ bg: currentBg, border: currentBorder });
+                                renderGrids();
+                            }
+                        };
+                    })(e, r, c, cellKey);
+
+                    grid.appendChild(cell);
+                }
+            }
+            wrapper.appendChild(grid);
+            container.appendChild(wrapper);
+        }
+    }
+
+    function getVariableValues(e, r, c) {
+        return { A: (c === 2 || c === 3) ? 1 : 0, B: (c === 1 || c === 2) ? 1 : 0, C: (r === 2 || r === 3) ? 1 : 0, D: (r === 1 || r === 2) ? 1 : 0, E: e };
+    }
+
+    function computeMintermValue(e, r, c) {
+        let vars = getVariableValues(e, r, c);
+        return numVars === 5 ? ((vars.A<<4)|(vars.B<<3)|(vars.C<<2)|(vars.D<<1)|vars.E) : ((vars.A<<3)|(vars.B<<2)|(vars.C<<1)|vars.D);
+    }
+    
+    function getAdjacentCells(e, r, c) {
+        let neighbors = [ { e, r: (r + 3) % 4, c }, { e, r: (r + 1) % 4, c }, { e, r, c: (c + 3) % 4 }, { e, r, c: (c + 1) % 4 } ];
+        if (numGrids === 2) neighbors.push({ e: e === 0 ? 1 : 0, r, c });
+        return neighbors;
+    }
+
+    function getMintermList() {
+        let list = [];
+        for (let e = 0; e < numGrids; e++) for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) if (matrix[e][r][c] === 1) list.push(computeMintermValue(e, r, c));
+        return list.sort((a, b) => a - b);
+    }
+
+    function countBits(n) { let count = 0; while(n) { count += n & 1; n >>= 1; } return count; }
+
+    function getMinCover(reqTerms, optTerms = []) {
+        let allTerms = [...reqTerms, ...optTerms];
+        if (reqTerms.length === 0) return { cost: 0, cover: [], allPrimes: [] };
+
+        let terms = allTerms.map(m => ({
+            bin: m.toString(2).padStart(numVars, '0'),
+            ones: countBits(m), used: false,
+            coveredReq: reqTerms.includes(m) ? [m] : [],
+            allMinterms: [m]
+        }));
+
+        let primeImplicants = [];
+        let unmarked = [...terms];
+
+        while (unmarked.length > 0) {
+            let nextUnmarked = [];
+            for (let i = 0; i < unmarked.length; i++) {
+                for (let j = i + 1; j < unmarked.length; j++) {
+                    let t1 = unmarked[i], t2 = unmarked[j];
+                    let diff = 0, diffIndex = -1;
+                    for (let k = 0; k < numVars; k++) { if (t1.bin[k] !== t2.bin[k]) { diff++; diffIndex = k; } }
+                    if (diff === 1) {
+                        t1.used = true; t2.used = true;
+                        let newBin = t1.bin.split(''); newBin[diffIndex] = '-';
+                        let cmReq = Array.from(new Set([...t1.coveredReq, ...t2.coveredReq])).sort((a,b)=>a-b);
+                        let cmAll = Array.from(new Set([...t1.allMinterms, ...t2.allMinterms])).sort((a,b)=>a-b);
+                        if (!nextUnmarked.some(item => item.bin === newBin.join(''))) {
+                            nextUnmarked.push({ bin: newBin.join(''), ones: t1.ones, used: false, coveredReq: cmReq, allMinterms: cmAll });
+                        }
+                    }
+                }
+            }
+            for (let t of unmarked) {
+                if (!t.used && !primeImplicants.some(pi => pi.bin === t.bin)) {
+                    if (t.coveredReq.length > 0) primeImplicants.push(t);
+                }
+            }
+            unmarked = nextUnmarked;
+        }
+
+        let minCost = Infinity; let bestCover = [];
+        function backtrack(index, currentCover, coveredSet) {
+            if (coveredSet.size === reqTerms.length) {
+                let cost = currentCover.reduce((acc, pi) => acc + pi.bin.split('').filter(c => c !== '-').length, 0);
+                if (cost < minCost) { minCost = cost; bestCover = [...currentCover]; } return;
+            }
+            if (index >= primeImplicants.length || currentCover.length >= minCost) return;
+            let nextCover = [...currentCover, primeImplicants[index]];
+            let nextCovered = new Set(coveredSet);
+            primeImplicants[index].coveredReq.forEach(m => nextCovered.add(m));
+            backtrack(index + 1, nextCover, nextCovered);
+            backtrack(index + 1, currentCover, coveredSet);
+        }
+        backtrack(0, [], new Set());
+        return { cost: minCost === Infinity ? 0 : minCost, cover: bestCover, allPrimes: primeImplicants };
+    }
+
+    function countUserLiterals(val) {
+        let regex = numVars === 5 ? /[ABCDE]/g : /[ABCD]/g;
+        let matches = val.toUpperCase().replace(/\s+/g, '').replace(/\+/g, '').replace(/[\(\)]/g, '').match(regex);
+        return matches ? matches.length : 0;
+    }
+
+    function analyzeMapSOP() {
+        let groupedZeros = 0, ungroupedOnes = 0, reqTerms = [], optTerms = [], groupsByColor = {};
+        for (let e = 0; e < numGrids; e++) for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) {
+            let val = matrix[e][r][c]; let key = e + '-' + r + '-' + c;
+            let hasLoop = cellLoops[key] && cellLoops[key].length > 0;
+            if (val === 0 && hasLoop) groupedZeros++;
+            if (val === 1 && !hasLoop) ungroupedOnes++;
+            if (val === 1) reqTerms.push(computeMintermValue(e, r, c));
+            if (val === 'X') optTerms.push(computeMintermValue(e, r, c));
+            if (cellLoops[key]) {
+                cellLoops[key].forEach(l => {
+                    if (!groupsByColor[l.border]) groupsByColor[l.border] = [];
+                    groupsByColor[l.border].push(getVariableValues(e, r, c));
+                });
+            }
+        }
+        return { groupedZeros, ungroupedOnes, reqTerms, optTerms, groupsByColor };
+    }
+
+    function analyzeMapPOS() {
+        let groupedOnes = 0, ungroupedZeros = 0, reqTerms = [], groupsByColor = {};
+        for (let e = 0; e < numGrids; e++) for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) {
+            let key = e + '-' + r + '-' + c; let val = matrix[e][r][c];
+            let hasLoop = cellLoops[key] && cellLoops[key].length > 0;
+            if (val === 1 && hasLoop) groupedOnes++;
+            if (val === 0 && !hasLoop) ungroupedZeros++;
+            if (val === 0) reqTerms.push(computeMintermValue(e, r, c));
+            if (cellLoops[key]) {
+                cellLoops[key].forEach(l => {
+                    if (!groupsByColor[l.border]) groupsByColor[l.border] = [];
+                    groupsByColor[l.border].push(getVariableValues(e, r, c));
+                });
+            }
+        }
+        return { groupedOnes, ungroupedZeros, reqTerms, groupsByColor };
+    }
+
+    function checkGroupsValidity(groupsByColor) {
+        let valid = true, errorMsg = '', totalLiterals = 0;
+        let groupColors = Object.keys(groupsByColor);
+        for (let i = 0; i < groupColors.length; i++) {
+            let cells = groupsByColor[groupColors[i]]; let size = cells.length;
+            if (![1, 2, 4, 8, 16, 32].includes(size)) { valid = false; errorMsg = "Hay lazos con un n\u00famero inv\u00e1lido de celdas."; break; }
+            let constA = cells[0].A, constB = cells[0].B, constC = cells[0].C, constD = cells[0].D;
+            let diffA = false, diffB = false, diffC = false, diffD = false, diffE = false;
+            for (let j = 1; j < size; j++) {
+                if (cells[j].A !== constA) diffA = true; if (cells[j].B !== constB) diffB = true;
+                if (cells[j].C !== constC) diffC = true; if (cells[j].D !== constD) diffD = true;
+                if (cells[j].E !== cells[0].E) diffE = true;
+            }
+            let numConstVars = (diffA?0:1) + (diffB?0:1) + (diffC?0:1) + (diffD?0:1) + (numVars===5 && !diffE?1:0);
+            if (size !== Math.pow(2, numVars - numConstVars)) { valid = false; errorMsg = "Hay lazos que no forman rect\u00e1ngulos v\u00e1lidos."; break; }
+            totalLiterals += numConstVars;
+        }
+        return { valid, errorMsg, totalLiterals };
+    }
+
+    function evaluateExpressionSOP(val) {
+        let parsedExpr = val.toUpperCase().replace(/\s+/g, '').replace(/([ABCDE])'/g, '!$1').replace(/~([ABCDE])/g, '!$1').replace(/([ABCDE])(?=[!ABCDE])/g, '$1&&').replace(/\+/g, '||');
+        for (let e = 0; e < numGrids; e++) for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) {
+            let vars = getVariableValues(e, r, c);
+            let evalStr = parsedExpr.replace(/A/g, vars.A).replace(/B/g, vars.B).replace(/C/g, vars.C).replace(/D/g, vars.D).replace(/E/g, vars.E);
+            let result = eval(evalStr) ? 1 : 0; let expected = matrix[e][r][c];
+            if (expected === 1 && result !== 1) return false;
+            if (expected === 0 && result !== 0) return false;
+        }
+        return true;
+    }
+
+    function evaluateExpressionPOS(val) {
+        let parsedExpr = val.toUpperCase().replace(/\s+/g, '').replace(/([ABCDE])'/g, '!$1').replace(/~([ABCDE])/g, '!$1')
+            .replace(/\)\(/g, ')&&(').replace(/\+(!?[ABCDE])/g, '||$1').replace(/(!?[ABCDE])\+/g, '$1||').replace(/\+/g, '||');
+        parsedExpr = parsedExpr.replace(/([ABCDE!])\(/g, '$1&&(').replace(/\)([ABCDE!])/g, ')&&$1').replace(/([ABCDE])(?=[!ABCDE])/g, '$1&&');
+        for (let e = 0; e < numGrids; e++) for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) {
+            let vars = getVariableValues(e, r, c);
+            let evalStr = parsedExpr.replace(/A/g, vars.A).replace(/B/g, vars.B).replace(/C/g, vars.C).replace(/D/g, vars.D).replace(/E/g, vars.E);
+            try { 
+                let result = eval(evalStr) ? 1 : 0; let expected = matrix[e][r][c];
+                if (expected === 1 && result !== 1) return false;
+                if (expected === 0 && result !== 0) return false;
+            } catch (ex) { return false; }
+        }
+        return true;
+    }
+
+    function verifySolution() {
+        if (mode === 'hazards') verifyHazards();
+        else if (mode === 'maxterms') verifyMaxterms();
+        else verifySimplify();
+    }
+
+    function verifySimplify() {
+        const val = document.getElementById('userAnswer').value;
+        const feedback = document.getElementById('feedback'); feedback.style.display = 'block';
+        let { groupedZeros, ungroupedOnes, reqTerms, optTerms, groupsByColor } = analyzeMapSOP();
+        let optimalLiterals = getMinCover(reqTerms, optTerms).cost;
+        let { valid: allGroupsValid, errorMsg: visualErrorStr, totalLiterals: visualLiterals } = checkGroupsValidity(groupsByColor);
+        let groupColors = Object.keys(groupsByColor);
+        let visualMsg = "<span style='font-size:1.1rem; color:#38bdf8;'><b>1. Tus Trazos en el Mapa:</b></span><br>";
+        let visualPassed = false;
+        
+        if (groupedZeros > 0) visualMsg += `<span class="hl-red">[ ERROR ] Has encerrado celdas con valor 0.</span><br>`;
+        else if (ungroupedOnes > 0) visualMsg += `<span class="hl-red">[ ERROR ] Hay 1s que quedaron sin color.</span><br>`;
+        else if (!allGroupsValid && reqTerms.length > 0) visualMsg += `<span class="hl-red">[ ERROR ] ${visualErrorStr}</span><br>`;
+        else if (groupColors.length === 0 && reqTerms.length === 0) { visualMsg += `<span class="hl-green">[ OK ] Mapa en 0s.</span><br>`; visualPassed = true; } 
+        else {
+            if (visualLiterals === optimalLiterals) { visualMsg += `<span class="hl-green">[ OK ] Dibujos correctos y al m\u00ednimo absoluto!</span><br>`; visualPassed = true; } 
+            else { visualMsg += `<span class="hl-yellow">[ AVISO ] Adyacencias v\u00e1lidas, pero no son el m\u00ednimo posible.</span><br>`; }
+        }
+
+        let logicMsg = "<br><span style='font-size:1.1rem; color:#38bdf8;'><b>2. Tu Ecuaci\u00f3n (SOP):</b></span><br>";
+        if (val.trim().length < 1) { feedback.className = visualPassed ? 'feedback-box warning-bg' : 'feedback-box error-bg'; feedback.innerHTML = visualMsg + logicMsg + `<span class="hl-yellow">[ AVISO ] Falta ingresar la funci\u00f3n.</span>`; return; }
+        
+        try {
+            if (!evaluateExpressionSOP(val)) { logicMsg += `<span class="hl-red">[ ERROR ] Tu funci\u00f3n no coincide con el mapa.</span>`; feedback.className = 'feedback-box error-bg'; } 
+            else {
+                let userLiterals = countUserLiterals(val);
+                if (userLiterals === optimalLiterals) { logicMsg += `<span class="hl-green">[ OK ] Funci\u00f3n Correcta y Simplificada al M\u00ednimo (${userLiterals} literales)!</span>`; feedback.className = visualPassed ? 'feedback-box success-bg' : 'feedback-box warning-bg'; } 
+                else { logicMsg += `<span class="hl-yellow">[ AVISO ] Tu funci\u00f3n es correcta pero NO m\u00ednima (${userLiterals} literales vs ${optimalLiterals} \u00f3ptimos).</span>`; feedback.className = 'feedback-box warning-bg'; }
+            }
+        } catch (err) { logicMsg += `<span class="hl-yellow">[ AVISO ] Error de sintaxis. Usa (A'B + CE)</span>`; feedback.className = 'feedback-box warning-bg'; }
+        feedback.innerHTML = visualMsg + logicMsg;
+    }
+
+    function verifyMaxterms() {
+        const val = document.getElementById('userAnswer').value;
+        const feedback = document.getElementById('feedback'); feedback.style.display = 'block';
+        let { groupedOnes, ungroupedZeros, reqTerms, groupsByColor } = analyzeMapPOS();
+        let optimalLiterals = getMinCover(reqTerms, []).cost; 
+        let { valid: allGroupsValid, errorMsg: visualErrorStr, totalLiterals: visualLiterals } = checkGroupsValidity(groupsByColor);
+        let groupColors = Object.keys(groupsByColor);
+        let visualMsg = "<span style='font-size:1.1rem; color:#38bdf8;'><b>1. Tus Trazos (Agrupando 0s):</b></span><br>";
+        let visualPassed = false;
+        
+        if (groupedOnes > 0) visualMsg += `<span class="hl-red">[ ERROR ] Has encerrado celdas con valor 1.</span><br>`;
+        else if (ungroupedZeros > 0) visualMsg += `<span class="hl-red">[ ERROR ] Hay 0s que quedaron sin color.</span><br>`;
+        else if (!allGroupsValid && reqTerms.length > 0) visualMsg += `<span class="hl-red">[ ERROR ] ${visualErrorStr}</span><br>`;
+        else if (groupColors.length === 0 && reqTerms.length === 0) { visualMsg += `<span class="hl-green">[ OK ] Mapa puro en 1s.</span><br>`; visualPassed = true; } 
+        else {
+            if (visualLiterals === optimalLiterals) { visualMsg += `<span class="hl-green">[ OK ] Dibujos correctos y al m\u00ednimo absoluto!</span><br>`; visualPassed = true; } 
+            else { visualMsg += `<span class="hl-yellow">[ AVISO ] Adyacencias v\u00e1lidas, pero no son el m\u00ednimo posible.</span><br>`; }
+        }
+
+        let logicMsg = "<br><span style='font-size:1.1rem; color:#38bdf8;'><b>2. Tu Ecuaci\u00f3n (POS):</b></span><br>";
+        if (val.trim().length < 1) { feedback.className = visualPassed ? 'feedback-box warning-bg' : 'feedback-box error-bg'; feedback.innerHTML = visualMsg + logicMsg + `<span class="hl-yellow">[ AVISO ] Falta ingresar la funci\u00f3n.</span>`; return; }
+        
+        try {
+            if (!evaluateExpressionPOS(val)) { logicMsg += `<span class="hl-red">[ ERROR ] Tu funci\u00f3n no coincide con el mapa.</span>`; feedback.className = 'feedback-box error-bg'; } 
+            else {
+                let userLiterals = countUserLiterals(val);
+                if (userLiterals === optimalLiterals) { logicMsg += `<span class="hl-green">[ OK ] Funci\u00f3n Correcta y Simplificada al M\u00ednimo en POS (${userLiterals} literales)!</span>`; feedback.className = visualPassed ? 'feedback-box success-bg' : 'feedback-box warning-bg'; } 
+                else { logicMsg += `<span class="hl-yellow">[ AVISO ] Tu funci\u00f3n es correcta pero NO m\u00ednima (${userLiterals} vs ${optimalLiterals} \u00f3ptimos).</span>`; feedback.className = 'feedback-box warning-bg'; }
+            }
+        } catch (err) { logicMsg += `<span class="hl-yellow">[ AVISO ] Error de sintaxis. Usa (A+B)(C'+D)</span>`; feedback.className = 'feedback-box warning-bg'; }
+        feedback.innerHTML = visualMsg + logicMsg;
+    }
+
+    function verifyHazards() {
+        const val = document.getElementById('userAnswer').value;
+        const feedback = document.getElementById('feedback'); 
+        feedback.style.display = 'block';
+
+        let { groupedZeros, ungroupedOnes, reqTerms, groupsByColor } = analyzeMapSOP();
+        let { valid: allGroupsValid, errorMsg: visualErrorStr } = checkGroupsValidity(groupsByColor);
+
+        let visualMsg = "<span style='font-size:1.1rem; color:#38bdf8;'><b>1. Cobertura Base:</b></span><br>";
+        let coveragePassed = false;
+
+        if (groupedZeros > 0) visualMsg += `<span class="hl-red">[ ERROR ] Has encerrado celdas con valor 0.</span><br>`;
+        else if (ungroupedOnes > 0) visualMsg += `<span class="hl-red">[ ERROR ] Hay 1s sin agrupar.</span><br>`;
+        else if (!allGroupsValid && reqTerms.length > 0) visualMsg += `<span class="hl-red">[ ERROR ] ${visualErrorStr}</span><br>`;
+        else if (reqTerms.length === 0) {
+            visualMsg += `<span class="hl-green">[ OK ] Mapa en 0s, no hay hazards posibles.</span><br>`; coveragePassed = true;
+        } else {
+            visualMsg += `<span class="hl-green">[ OK ] Todos los 1s est\u00e1n cubiertos con rect\u00e1ngulos v\u00e1lidos.</span><br>`; coveragePassed = true;
+        }
+
+        let hazardMsg = "<br><span style='font-size:1.1rem; color:#38bdf8;'><b>2. Cobertura de Hazards:</b></span><br>";
+        let hazardsFound = [];
+
+        if (coveragePassed && reqTerms.length > 0) {
+            let checked = new Set();
+            for (let e = 0; e < numGrids; e++) {
+                for (let r = 0; r < 4; r++) {
+                    for (let c = 0; c < 4; c++) {
+                        if (matrix[e][r][c] !== 1) continue;
+                        let key1 = e + '-' + r + '-' + c;
+                        getAdjacentCells(e, r, c).forEach(n => {
+                            if (matrix[n.e][n.r][n.c] !== 1) return;
+                            let key2 = n.e + '-' + n.r + '-' + n.c;
+                            let pairKey = [key1, key2].sort().join('|');
+                            if (checked.has(pairKey)) return;
+                            checked.add(pairKey);
+                            let colors1 = (cellLoops[key1] || []).map(l => l.border);
+                            let colors2 = (cellLoops[key2] || []).map(l => l.border);
+                            if (!colors1.some(x => colors2.includes(x))) {
+                                hazardsFound.push([computeMintermValue(e, r, c), computeMintermValue(n.e, n.r, n.c)]);
+                            }
+                        });
+                    }
+                }
+            }
+        }
+
+        let hazardsFree = hazardsFound.length === 0;
+        if (!coveragePassed) {
+            hazardMsg += `<span class="hl-yellow">[ - ] Corrige primero la cobertura base de unos.</span>`;
+        } else if (hazardsFree) {
+            hazardMsg += `<span class="hl-green">[ OK ] No quedan hazards est\u00e1ticos-1 sin cubrir. Excelente!</span>`;
+        } else {
+            hazardMsg += `<span class="hl-red">[ ERROR ] A\u00fan hay hazards entre: ` + hazardsFound.map(p => `m(${p[0]},${p[1]})`).join(', ') + `. Agrega un lazo de consenso que cubra cada par.</span>`;
+        }
+
+        let logicMsg = "<br><span style='font-size:1.1rem; color:#38bdf8;'><b>3. Tu Ecuaci\u00f3n:</b></span><br>";
+        let logicOk = false;
+        let syntaxError = false;
+        if (val.trim().length < 1) {
+            logicMsg += `<span class="hl-yellow">[ AVISO ] Falta ingresar la funci\u00f3n.</span>`;
+        } else {
+            try {
+                logicOk = evaluateExpressionSOP(val);
+                if (logicOk) {
+                    logicMsg += `<span class="hl-green">[ OK ] La funci\u00f3n es l\u00f3gicamente correcta (incluyendo consensos).</span>`;
+                } else {
+                    logicMsg += `<span class="hl-red">[ ERROR ] Tu funci\u00f3n no coincide con el mapa.</span>`;
+                }
+            } catch (err) {
+                syntaxError = true;
+                logicMsg += `<span class="hl-yellow">[ AVISO ] Error de sintaxis. Usa (A'B + CE)</span>`;
+            }
+        }
+
+        if (coveragePassed && hazardsFree && logicOk) feedback.className = 'feedback-box success-bg';
+        else if (groupedZeros > 0 || ungroupedOnes > 0 || (!allGroupsValid && reqTerms.length > 0) || (val.trim().length >= 1 && !logicOk && !syntaxError)) feedback.className = 'feedback-box error-bg';
+        else feedback.className = 'feedback-box warning-bg';
+
+        feedback.innerHTML = visualMsg + hazardMsg + logicMsg;
+    }
+
+    function verifyMinterms() {
+        const feedback = document.getElementById('feedback'); feedback.style.display = 'block';
+        let missing = [], extra = [];
+        for (let e = 0; e < numGrids; e++) for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) {
+            let val = computeMintermValue(e, r, c);
+            if (matrix[e][r][c] === 1 && guessMatrix[e][r][c] !== 1) missing.push(val);
+            if (matrix[e][r][c] === 0 && guessMatrix[e][r][c] === 1) extra.push(val);
+        }
+        missing.sort((a,b)=>a-b); extra.sort((a,b)=>a-b);
+        if (missing.length === 0 && extra.length === 0) { feedback.className = 'feedback-box success-bg'; feedback.innerHTML = `<span class="hl-green">[ OK ] &iexcl;Mapa completado correctamente!</span>`; } 
+        else {
+            feedback.className = 'feedback-box error-bg'; let msg = '';
+            if (missing.length > 0) msg += `<span class="hl-red">Te faltaron marcar: m(${missing.join(', ')})</span><br>`;
+            if (extra.length > 0) msg += `<span class="hl-red">Marcaste de m\u00e1s: m(${extra.join(', ')})</span><br>`;
+            feedback.innerHTML = msg;
+        }
+    }
+
+    function solveMap() {
+        const feedback = document.getElementById('feedback'); 
+        feedback.style.display = 'block';
+        let solveType = document.querySelector('input[name="solveType"]:checked').value;
+
+        cellLoops = {};
+        let colors = [
+            {bg:"rgba(239, 68, 68, 0.3)", border:"rgb(239, 68, 68)"}, {bg:"rgba(59, 130, 246, 0.3)", border:"rgb(59, 130, 246)"},
+            {bg:"rgba(34, 197, 94, 0.3)", border:"rgb(34, 197, 94)"}, {bg:"rgba(234, 179, 8, 0.3)", border:"rgb(234, 179, 8)"},
+            {bg:"rgba(168, 85, 247, 0.3)", border:"rgb(168, 85, 247)"}, {bg:"rgba(249, 115, 22, 0.3)", border:"rgb(249, 115, 22)"},
+            {bg:"rgba(6, 182, 212, 0.3)", border:"rgb(6, 182, 212)"}, {bg:"rgba(236, 72, 153, 0.3)", border:"rgb(236, 72, 153)"}
+        ];
+
+        let colorIdx = 0; let exprTerms = [];
+        let varsList = numVars === 5 ? ['A','B','C','D','E'] : ['A','B','C','D'];
+
+        if (solveType === 'SOP' || solveType === 'HAZARDS') {
+            let req1 = [], opt1 = []; let reqF = [], optF = []; let reqG = [], optG = [];
+            for (let e = 0; e < numGrids; e++) for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) {
+                let val = matrix[e][r][c]; let m = computeMintermValue(e,r,c);
+                if (val === 1) { req1.push(m); optF.push(m); optG.push(m); }
+                if (val === 'X') { opt1.push(m); optF.push(m); optG.push(m); }
+                if (val === 'F') { reqF.push(m); }
+                if (val === 'G') { reqG.push(m); }
+            }
+
+            if (req1.length === 0 && reqF.length === 0 && reqG.length === 0) { 
+                feedback.className = 'feedback-box success-bg'; 
+                feedback.innerHTML = `<span style='font-size:1.1rem; color:#38bdf8;'><b>Soluci\u00f3n:</b></span><br><span class='hl-green' style='font-size:1.2rem;'>Salida = 0 (Mapa Vac\u00edo)</span>`; return; 
+            }
+            if (req1.length === Math.pow(2, numVars)) { 
+                feedback.className = 'feedback-box success-bg'; 
+                feedback.innerHTML = `<span style='font-size:1.1rem; color:#38bdf8;'><b>Soluci\u00f3n:</b></span><br><span class='hl-green' style='font-size:1.2rem;'>Salida = 1 (Mapa Lleno)</span>`; return; 
+            }
+
+            let result1 = getMinCover(req1, opt1);
+            let cover1 = result1.cover;
+            
+            // LÓGICA DE HAZARDS AUTOMÁTICA SOP (Estáticos-1)
+            if (solveType === 'HAZARDS') {
+                let checkedPairs = new Set();
+                for (let e = 0; e < numGrids; e++) for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) {
+                    if (matrix[e][r][c] !== 1) continue;
+                    let m1 = computeMintermValue(e, r, c);
+                    
+                    getAdjacentCells(e, r, c).forEach(n => {
+                        if (matrix[n.e][n.r][n.c] !== 1) return;
+                        let m2 = computeMintermValue(n.e, n.r, n.c);
+                        
+                        let pairKey = [m1, m2].sort((a,b)=>a-b).join('|');
+                        if (checkedPairs.has(pairKey)) return;
+                        checkedPairs.add(pairKey);
+
+                        let isCovered = cover1.some(pi => pi.allMinterms.includes(m1) && pi.allMinterms.includes(m2));
+                        
+                        if (!isCovered) {
+                            let consensusPI = result1.allPrimes.find(pi => pi.allMinterms.includes(m1) && pi.allMinterms.includes(m2));
+                            if (consensusPI && !cover1.includes(consensusPI)) {
+                                cover1.push(consensusPI);
+                            }
+                        }
+                    });
+                }
+            }
+
+            let coverF = getMinCover(reqF, optF).cover; 
+            let coverG = getMinCover(reqG, optG).cover;
+            
+            function processCoverSOP(currentCover, suffixVar) {
+                if(currentCover.length === 0) return;
+                currentCover.forEach(pi => {
+                    let color = colors[colorIdx % colors.length]; colorIdx++;
+                    if (pi.bin === '-'.repeat(numVars)) exprTerms.push(suffixVar === '' ? '1' : suffixVar);
+                    else {
+                        let term = '';
+                        for(let i=0; i<numVars; i++) {
+                            if (pi.bin[i] === '1') term += varsList[i]; else if (pi.bin[i] === '0') term += varsList[i] + "'";
+                        }
+                        exprTerms.push(term + suffixVar);
+                    }
+                    pi.allMinterms.forEach(m => {
+                        for (let e = 0; e < numGrids; e++) for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) {
+                            if (computeMintermValue(e,r,c) === m) {
+                                let key = e + '-' + r + '-' + c;
+                                if(!cellLoops[key]) cellLoops[key] = [];
+                                cellLoops[key].push(color);
+                            }
+                        }
+                    });
+                });
+            }
+
+            processCoverSOP(cover1, ''); processCoverSOP(coverF, 'F'); processCoverSOP(coverG, 'G');
+            renderGrids();
+            
+            let finalExpr = exprTerms.join(' + ');
+            let hzTitle = solveType === 'HAZARDS' ? "SOP Libre de Hazards (con t&eacute;rminos redundantes)" : "SOP (Agrupando 1s al m&iacute;nimo)";
+            
+            feedback.className = 'feedback-box success-bg';
+            feedback.innerHTML = `<span style='font-size:1.1rem; color:#38bdf8;'><b>Lazos Dibujados y Soluci\u00f3n Generada - ${hzTitle}:</b></span><br>
+                                  <span class="hl-green" style="font-size:1.2rem;">Salida = ${finalExpr}</span>`;
+        } 
+        else { 
+            // Lógica para POS (Agrupar Ceros)
+            let req0 = [], opt0 = [];
+            for (let e = 0; e < numGrids; e++) for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) {
+                let val = matrix[e][r][c]; let m = computeMintermValue(e,r,c);
+                if (val === 0) { req0.push(m); }
+                if (val === 'X') { opt0.push(m); }
+                if (val === 'F' || val === 'G') { opt0.push(m); } 
+            }
+
+            if (req0.length === 0) { 
+                feedback.className = 'feedback-box success-bg'; 
+                feedback.innerHTML = `<span style='font-size:1.1rem; color:#38bdf8;'><b>Soluci\u00f3n (POS):</b></span><br><span class='hl-green' style='font-size:1.2rem;'>Salida = 1 (No hay ceros)</span>`; return; 
+            }
+            if (req0.length === Math.pow(2, numVars)) { 
+                feedback.className = 'feedback-box success-bg'; 
+                feedback.innerHTML = `<span style='font-size:1.1rem; color:#38bdf8;'><b>Soluci\u00f3n (POS):</b></span><br><span class='hl-green' style='font-size:1.2rem;'>Salida = 0 (Lleno de ceros)</span>`; return; 
+            }
+
+            let result0 = getMinCover(req0, opt0);
+            let cover0 = result0.cover;
+
+            // LÓGICA DE HAZARDS AUTOMÁTICA POS (Estáticos-0)
+            if (solveType === 'POS_HAZARDS') {
+                let checkedPairs = new Set();
+                for (let e = 0; e < numGrids; e++) for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) {
+                    if (matrix[e][r][c] !== 0) continue;
+                    let m1 = computeMintermValue(e, r, c);
+                    
+                    getAdjacentCells(e, r, c).forEach(n => {
+                        if (matrix[n.e][n.r][n.c] !== 0) return;
+                        let m2 = computeMintermValue(n.e, n.r, n.c);
+                        
+                        let pairKey = [m1, m2].sort((a,b)=>a-b).join('|');
+                        if (checkedPairs.has(pairKey)) return;
+                        checkedPairs.add(pairKey);
+
+                        let isCovered = cover0.some(pi => pi.allMinterms.includes(m1) && pi.allMinterms.includes(m2));
+                        
+                        if (!isCovered) {
+                            let consensusPI = result0.allPrimes.find(pi => pi.allMinterms.includes(m1) && pi.allMinterms.includes(m2));
+                            if (consensusPI && !cover0.includes(consensusPI)) {
+                                cover0.push(consensusPI);
+                            }
+                        }
+                    });
+                }
+            }
+
+            cover0.forEach(pi => {
+                let color = colors[colorIdx % colors.length]; colorIdx++;
+                if (pi.bin === '-'.repeat(numVars)) {
+                    exprTerms.push('0');
+                } else {
+                    let termParts = [];
+                    for(let i=0; i<numVars; i++) {
+                        if (pi.bin[i] === '0') termParts.push(varsList[i]); 
+                        else if (pi.bin[i] === '1') termParts.push(varsList[i] + "'");
+                    }
+                    exprTerms.push('(' + termParts.join(' + ') + ')');
+                }
+                pi.allMinterms.forEach(m => {
+                    for (let e = 0; e < numGrids; e++) for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) {
+                        if (computeMintermValue(e,r,c) === m) {
+                            let key = e + '-' + r + '-' + c;
+                            if(!cellLoops[key]) cellLoops[key] = [];
+                            cellLoops[key].push(color);
+                        }
+                    }
+                });
+            });
+
+            renderGrids();
+            
+            let finalExpr = exprTerms.join('');
+            let hzTitle = solveType === 'POS_HAZARDS' ? "POS Libre de Hazards (con t&eacute;rminos redundantes)" : "POS (Agrupando 0s al m&iacute;nimo)";
+            
+            feedback.className = 'feedback-box success-bg';
+            feedback.innerHTML = `<span style='font-size:1.1rem; color:#38bdf8;'><b>Lazos Dibujados y Soluci\u00f3n Generada - ${hzTitle}:</b></span><br>
+                                  <span class="hl-green" style="font-size:1.2rem;">Salida = ${finalExpr}</span>`;
+        }
+    }
+
+    window.onload = function() { newMap(); };
+</script>
+
+</body>
+</html>
